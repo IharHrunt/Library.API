@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Library.API.Entities;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
 
@@ -29,18 +31,20 @@ namespace Library.API
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
-        {            
+        {
             services.AddMvc(setupAction =>
             {
                 setupAction.ReturnHttpNotAcceptable = true;
                 setupAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
                 setupAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter());
             });            
-            string connectionString = Configuration.GetValue<string>("connectionStrings:libraryDBConnectionString");
-            // IConfigurationSection connStrings = Configuration.GetSection("ConnectionStrings");
-            // string connectionString = connStrings.GetSection("libraryDBConnectionString").Value;
-
-            services.AddDbContext<LibraryContext>(o => o.UseSqlServer(connectionString));
+            
+            //string connectionString = Configuration.GetValue<string>("connectionStrings:libraryDBConnectionString");
+            //services.AddDbContext<LibraryContext>(o => o.UseSqlServer(connectionString));
+            
+            string connectionString = Configuration.GetValue<string>("connectionStrings:libraryMySQLDBConnectionString");
+            services.AddDbContext<LibraryContext>(o => o.UseMySql(connectionString));
+            
             services.AddScoped<ILibraryRepository, LibraryRepository>();
             services.AddHttpCacheHeaders();            
         }
