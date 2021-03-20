@@ -19,7 +19,12 @@ namespace Library.API
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .Build();
+            .UseKestrel()
+            .UseContentRoot(Directory.GetCurrentDirectory())
+            .UseIISIntegration()
+            .CaptureStartupErrors(true) // the default
+            .UseSetting("detailedErrors", "true")
+            .UseStartup<Startup>()
+            .Build();
     }
 }
