@@ -54,6 +54,32 @@ namespace Library.API.Controllers
             }
         }
 
+        [HttpGet("random/images")]
+        public async Task<IActionResult> DownloadRandom()
+        {
+            var files = await _libraryRepository.GetAllFilesAsync();
+
+            var random = new Random();
+            int index = random.Next(files.Count);
+            var path = files[index].Path;
+
+            try
+            {
+                var memory = new MemoryStream();
+                using (var stream = new FileStream(path, FileMode.Open))
+                {
+                    await stream.CopyToAsync(memory);
+                }
+                memory.Position = 0;
+
+                return File(memory, GetContentType(path), Path.GetFileName(path));
+            }
+            catch
+            {
+                return NotFound();
+            }
+        }
+
         [HttpPost]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadFile(IFormFile file)

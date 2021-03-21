@@ -20,6 +20,7 @@ namespace Library.API.Services
         void UpdateBookForAuthor(Book book);
         void DeleteBook(Book book);
         Task<File> GetFileAsync(int id);
+        Task<List<File>> GetAllFilesAsync();
         void AddFileAsync(File file);
     }
 }

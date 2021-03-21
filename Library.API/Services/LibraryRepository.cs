@@ -102,6 +102,11 @@ namespace Library.API.Services
             return await _context.Files.FirstOrDefaultAsync(x => x.Id == id);
         }
 
+        public async Task<List<File>> GetAllFilesAsync()
+        {
+            return await _context.Files.ToListAsync();
+        }
+
         public async void AddFileAsync(File file)
         {
             await _context.Files.AddAsync(file);
