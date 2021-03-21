@@ -46,7 +46,7 @@ namespace Library.API
             services.AddDbContext<LibraryContext>(o => o.UseMySql(connectionString));
             
             services.AddScoped<ILibraryRepository, LibraryRepository>();
-            services.AddHttpCacheHeaders();            
+            services.AddHttpCacheHeaders();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

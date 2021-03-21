@@ -19,8 +19,8 @@ namespace Library.API.Services
         void AddBookForAuthor(Guid authorId, Book book);
         void UpdateBookForAuthor(Book book);
         void DeleteBook(Book book);
-
-        
+        Task<File> GetFileAsync(int id);
+        void AddFileAsync(File file);
     }
 }
 

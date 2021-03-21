@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="images\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 

@@ -13,6 +13,9 @@ namespace Library.API.Entities
             context.Authors.RemoveRange(context.Authors);
             context.SaveChanges();
 
+            context.Files.RemoveRange(context.Files);
+            context.SaveChanges();
+
             // init seed data
             var authors = new List<Author>()
             {

@@ -95,7 +95,16 @@ namespace Library.API.Services
         public void DeleteBook(Book book)
         {
             _context.Books.Remove(book);
-        }     
-       
+        }
+
+        public async Task<File> GetFileAsync(int id)
+        {
+            return await _context.Files.FirstOrDefaultAsync(x => x.Id == id);
+        }
+
+        public async void AddFileAsync(File file)
+        {
+            await _context.Files.AddAsync(file);
+        }
     }
 }
