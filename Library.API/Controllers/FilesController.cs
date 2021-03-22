@@ -1,4 +1,9 @@
-﻿using Library.API.Services;
+﻿using Amazon;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Amazon.S3.Transfer;
+using Amazon.S3.Util;
+using Library.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +23,11 @@ namespace Library.API.Controllers
     {
         private ILibraryRepository _libraryRepository;
         private IConfiguration _configuration;
-        string _storage; 
+        string _storage;
+        string _bucketName = "ihar-images";
+        string _awsAccessKey = "";
+        string _awsSecretKey = "";
+
 
         public FilesController(ILibraryRepository libraryRepository, IConfiguration configuration)
         {
@@ -36,6 +45,17 @@ namespace Library.API.Controllers
             }
 
             var path = Path.Combine(_storage, fileName);
+
+            try
+            {
+                TransferUtility fileTransferUtility = new TransferUtility(new AmazonS3Client(_awsAccessKey, _awsSecretKey, RegionEndpoint.USEast1));
+                fileTransferUtility.Download(path, _bucketName, fileName);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
 
             try
             {
@@ -57,6 +77,7 @@ namespace Library.API.Controllers
         [HttpGet("random/images")]
         public async Task<IActionResult> DownloadRandom()
         {
+
             var files = await _libraryRepository.GetAllFilesAsync();
 
             var random = new Random();
@@ -65,6 +86,9 @@ namespace Library.API.Controllers
 
             try
             {
+                TransferUtility fileTransferUtility = new TransferUtility(new AmazonS3Client(_awsAccessKey, _awsSecretKey, RegionEndpoint.USEast1));
+                fileTransferUtility.Download(path, _bucketName, files[index].Name);                
+
                 var memory = new MemoryStream();
                 using (var stream = new FileStream(path, FileMode.Open))
                 {
@@ -84,6 +108,7 @@ namespace Library.API.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadFile(IFormFile file)
         {
+
             if (file == null || file.Length == 0)
             {
                 return Content("file not selected");
@@ -96,6 +121,29 @@ namespace Library.API.Controllers
                 await file.CopyToAsync(stream);
             }
 
+            if (!System.IO.File.Exists(path))
+            {
+                throw new Exception();
+            }
+
+
+            IAmazonS3 client = new AmazonS3Client(_awsAccessKey, _awsSecretKey, RegionEndpoint.USEast1);
+            FileInfo fileInfo = new FileInfo(path);
+
+            PutObjectRequest request = new PutObjectRequest()
+            {
+                InputStream = fileInfo.OpenRead(),
+                BucketName = _bucketName,
+                Key = file.FileName // <-- in S3 key represents a path  
+            };
+
+            PutObjectResponse response = await client.PutObjectAsync(request);
+
+            if (response.HttpStatusCode != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exception();
+            }
+
             Entities.File filedb = new Entities.File
             {
                 Name = file.FileName,
@@ -106,7 +154,7 @@ namespace Library.API.Controllers
             _libraryRepository.AddFileAsync(filedb);
             if (!(await _libraryRepository.SaveAsync()))
             {
-                throw new Exception("Failed to save file data to db");                
+                throw new Exception("Failed to save file data to db");
             }
 
             return Ok();
@@ -135,6 +183,6 @@ namespace Library.API.Controllers
                 {".gif", "image/gif"},
                 {".csv", "text/csv"}
             };
-        }
+        }    
     }
 }

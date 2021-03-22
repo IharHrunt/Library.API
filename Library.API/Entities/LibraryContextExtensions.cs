@@ -10,11 +10,11 @@ namespace Library.API.Entities
             // first, clear the database.  This ensures we can always start 
             // fresh with each demo.  Not advised for production environments, obviously :-)
 
-            context.Authors.RemoveRange(context.Authors);
-            context.SaveChanges();
+            //context.Authors.RemoveRange(context.Authors);
+            //context.SaveChanges();
 
-            context.Files.RemoveRange(context.Files);
-            context.SaveChanges();
+            //context.Files.RemoveRange(context.Files);
+            //context.SaveChanges();
 
             // init seed data
             var authors = new List<Author>()
@@ -153,8 +153,8 @@ namespace Library.API.Entities
                 }
             };
 
-            context.Authors.AddRange(authors);
-            context.SaveChanges();
+            //context.Authors.AddRange(authors);
+            //context.SaveChanges();
         }
     }
 }
