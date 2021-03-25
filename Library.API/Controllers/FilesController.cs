@@ -2,17 +2,15 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
-using Amazon.S3.Util;
+using Amazon.SimpleNotificationService;
+using Amazon.SimpleNotificationService.Model;
 using Library.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Library.API.Controllers
@@ -24,10 +22,12 @@ namespace Library.API.Controllers
         private ILibraryRepository _libraryRepository;
         private IConfiguration _configuration;
         string _storage;
-        string _bucketName = "ihar-images";
-        string _awsAccessKey = "";
-        string _awsSecretKey = "";
-
+        private string _bucketName = "ihar-images";
+        private string _awsAccessKeyS3 = "AKIAZS6FTPFXMCHT3DHU";
+        private string _awsSecretKeyS3 = "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";
+        private string _awsAccessKeySNS = "AKIAZS6FTPFXMDQWIT4V";
+        private string _awsSecretKeySNS = "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";
+        private string _topic = "arn:aws:sns:us-east-1:659155024238:ihar-topic";
 
         public FilesController(ILibraryRepository libraryRepository, IConfiguration configuration)
         {
@@ -48,7 +48,7 @@ namespace Library.API.Controllers
 
             try
             {
-                TransferUtility fileTransferUtility = new TransferUtility(new AmazonS3Client(_awsAccessKey, _awsSecretKey, RegionEndpoint.USEast1));
+                TransferUtility fileTransferUtility = new TransferUtility(new AmazonS3Client(_awsAccessKeyS3, _awsSecretKeyS3, RegionEndpoint.USEast1));
                 fileTransferUtility.Download(path, _bucketName, fileName);
 
             }
@@ -77,7 +77,6 @@ namespace Library.API.Controllers
         [HttpGet("random/images")]
         public async Task<IActionResult> DownloadRandom()
         {
-
             var files = await _libraryRepository.GetAllFilesAsync();
 
             var random = new Random();
@@ -86,7 +85,7 @@ namespace Library.API.Controllers
 
             try
             {
-                TransferUtility fileTransferUtility = new TransferUtility(new AmazonS3Client(_awsAccessKey, _awsSecretKey, RegionEndpoint.USEast1));
+                TransferUtility fileTransferUtility = new TransferUtility(new AmazonS3Client(_awsAccessKeyS3, _awsSecretKeyS3, RegionEndpoint.USEast1));
                 fileTransferUtility.Download(path, _bucketName, files[index].Name);                
 
                 var memory = new MemoryStream();
@@ -102,6 +101,34 @@ namespace Library.API.Controllers
             {
                 return NotFound();
             }
+        }
+
+        [HttpGet("subscribe/{email}")]
+        public async Task<IActionResult> Subscribe(string email)
+        {
+            var clientSNS = new AmazonSimpleNotificationServiceClient(_awsAccessKeySNS, _awsSecretKeySNS, Amazon.RegionEndpoint.USEast1);
+            var subscribeResponse = await clientSNS.SubscribeAsync(new SubscribeRequest(_topic, "email", email));
+            
+            if (subscribeResponse.HttpStatusCode != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exception("Topic subscription falied");
+            }
+
+            return Ok();
+        }
+
+        [HttpGet("unsubscribe/{arn}")]
+        public async Task<IActionResult> Unsubscribe(string arn)
+        {
+            var clientSNS = new AmazonSimpleNotificationServiceClient(_awsAccessKeySNS, _awsSecretKeySNS, Amazon.RegionEndpoint.USEast1);
+            var unsubscribeResponse = await clientSNS.UnsubscribeAsync(new UnsubscribeRequest(arn));
+
+            if (unsubscribeResponse.HttpStatusCode != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exception("Topic unsubscription falied");
+            }
+
+            return Ok();
         }
 
         [HttpPost]
@@ -126,22 +153,32 @@ namespace Library.API.Controllers
                 throw new Exception();
             }
 
+            var clientS3 = new AmazonS3Client(_awsAccessKeyS3, _awsSecretKeyS3, RegionEndpoint.USEast1);
+            var fileInfo = new FileInfo(path);
 
-            IAmazonS3 client = new AmazonS3Client(_awsAccessKey, _awsSecretKey, RegionEndpoint.USEast1);
-            FileInfo fileInfo = new FileInfo(path);
-
-            PutObjectRequest request = new PutObjectRequest()
+           var putObjectRequest = new PutObjectRequest()
             {
                 InputStream = fileInfo.OpenRead(),
                 BucketName = _bucketName,
-                Key = file.FileName // <-- in S3 key represents a path  
+                Key = file.FileName 
             };
 
-            PutObjectResponse response = await client.PutObjectAsync(request);
+            var response = await clientS3.PutObjectAsync(putObjectRequest);
 
             if (response.HttpStatusCode != System.Net.HttpStatusCode.OK)
             {
-                throw new Exception();
+                throw new Exception("S3 uploading failed");
+            }
+
+            string subject = "New file in S3 bucket";
+            string body = $"New file {file.FileName} has been uploaded to S3 bucket {_bucketName}";
+            
+            var clientSNS = new AmazonSimpleNotificationServiceClient(_awsAccessKeySNS, _awsSecretKeySNS, RegionEndpoint.USEast1);
+            var publishResponse = await clientSNS.PublishAsync(new PublishRequest(_topic, body, subject));
+            
+            if (publishResponse.HttpStatusCode != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exception("SNS publishishing falied");
             }
 
             Entities.File filedb = new Entities.File
@@ -158,6 +195,16 @@ namespace Library.API.Controllers
             }
 
             return Ok();
+        }
+
+        [HttpPost("{id}")]
+        public async Task<IActionResult> BlockAuthorCreation(Guid id)
+        {
+            if (await _libraryRepository.AuthorExistsAsync(id))
+            {
+                return new StatusCodeResult(StatusCodes.Status409Conflict);
+            }
+            return NotFound();
         }
 
         private string GetContentType(string path)
@@ -186,3 +233,11 @@ namespace Library.API.Controllers
         }    
     }
 }
+
+// Create a topic
+//CreateTopicRequest createTopicReq = new CreateTopicRequest("New-Topic-Name");
+//CreateTopicResponse createTopicRes = await client.CreateTopicAsync(createTopicReq);
+////delete an SNS topic
+//DeleteTopicRequest deleteTopicRequest = new DeleteTopicRequest(createTopicRes.TopicArn);
+//DeleteTopicResponse deleteTopicResponse = await client.DeleteTopicAsync(deleteTopicRequest);
+
