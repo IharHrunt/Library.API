@@ -23,11 +23,11 @@ namespace Library.API.Controllers
         private IConfiguration _configuration;
         string _storage;
         private string _bucketName = "ihar-images";
-        private string _awsAccessKeyS3 = "AKIAZS6FTPFXMCHT3DHU";
-        private string _awsSecretKeyS3 = "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";
-        private string _awsAccessKeySNS = "AKIAZS6FTPFXMDQWIT4V";
-        private string _awsSecretKeySNS = "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";
-        private string _topic = "arn:aws:sns:us-east-1:659155024238:ihar-topic";
+        private string _awsAccessKeyS3 = "AKIAZS6...";
+        private string _awsSecretKeyS3 = "N/UOu8v...";
+        private string _awsAccessKeySNS = "AKIAZS...";
+        private string _awsSecretKeySNS = "2puKN5...";
+        private string _topic = "arn:aws:sns:us-east-1:...";
 
         public FilesController(ILibraryRepository libraryRepository, IConfiguration configuration)
         {
